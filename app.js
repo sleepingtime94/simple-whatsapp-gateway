@@ -10,7 +10,7 @@ const db = new jsondb("./logs.json");
 require("dotenv").config();
 
 const cors = require("cors");
-const port = process.env.PORT || 9000;
+const port = process.env.PORT;
 
 const createLogs = (phone, status) => {
   const msgID = uid();
@@ -74,6 +74,7 @@ const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
     headless: true,
+    executablePath: "/usr/bin/chromium-browser",
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
