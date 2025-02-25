@@ -1,3 +1,4 @@
+// Import dependencies
 const express = require("express");
 const cors = require("cors");
 const QRCode = require("qrcode");
@@ -5,8 +6,11 @@ const { Client, LocalAuth } = require("whatsapp-web.js");
 const http = require("http");
 const { Server } = require("socket.io");
 const dotenv = require("dotenv");
+
+// Load environment variables
 dotenv.config();
 
+// Initialize Express app
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -15,33 +19,37 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Inisialisasi server HTTP dan Socket.IO
+// Initialize HTTP server and Socket.IO
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // Izinkan semua domain untuk mengakses Socket.IO
+    origin: "*", // Allow all domains to access Socket.IO
     methods: ["GET", "POST"],
   },
 });
 
-// Variabel global untuk QR Code dan status koneksi
+// Global variables
 let qrCode = null;
+let connectionStatus = "disconnected"; // Tracks the WhatsApp connection status
 
-// Format nomor telepon
+/**
+ * Format phone number to WhatsApp format.
+ * @param {string} number - The phone number to format.
+ * @returns {string} - Formatted phone number.
+ */
 const phoneNumberFormatter = (number) => {
-  let formatted = number.replace(/\D/g, "");
+  let formatted = number.replace(/\D/g, ""); // Remove non-numeric characters
   if (formatted.startsWith("0")) {
-    formatted = "62" + formatted.substr(1);
+    formatted = "62" + formatted.substr(1); // Replace leading '0' with '62'
   }
   return formatted.endsWith("@c.us") ? formatted : formatted + "@c.us";
 };
 
-// Inisialisasi client WhatsApp
+// Initialize WhatsApp client
 const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
     headless: true,
-    // executablePath: "/usr/bin/chromium-browser",
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
@@ -59,13 +67,18 @@ const client = new Client({
   },
 });
 
-// Event handler untuk client WhatsApp
-let connectionStatus = "disconnected"; // Variabel global untuk status koneksi
-
-client.on("qr", (qr) => {
+// Event handlers for WhatsApp client
+client.on("qr", async (qr) => {
   qrCode = qr;
   console.log("QR Code generated, scan it to continue.");
-  io.emit("connection-status", { status: "waiting-for-scan" }); // Kirim status menunggu scan
+
+  try {
+    const qrCodeUrl = await QRCode.toDataURL(qr); // Convert QR code to base64 image
+    io.emit("qr-code", { qrCode: qrCodeUrl }); // Send QR code to clients
+    io.emit("connection-status", { status: "waiting-for-scan" }); // Update connection status
+  } catch (error) {
+    console.error("Error generating QR Code:", error);
+  }
 });
 
 client.on("authenticated", () => {
@@ -82,7 +95,7 @@ client.on("ready", () => {
 
 client.on("auth_failure", () => {
   connectionStatus = "failed";
-  console.error("Auth Failure!");
+  console.error("Authentication failed!");
   io.emit("connection-status", { status: "failed" });
 });
 
@@ -92,27 +105,32 @@ client.on("disconnected", () => {
   io.emit("connection-status", { status: "disconnected" });
 });
 
+// Initialize WhatsApp client
 client.initialize();
 
-// Routing
+// Routes
 app.get("/", (req, res) => {
-  res.sendFile(__dirname + "/index.html");
+  res.sendFile(__dirname + "/index.html"); // Serve the main HTML page
 });
 
 app.get("/current-status", (req, res) => {
-  res.status(200).json({ status: connectionStatus });
+  res.status(200).json({ status: connectionStatus }); // Return current connection status
 });
 
 app.post("/send-message", async (req, res) => {
-  const number = phoneNumberFormatter(req.body.phone);
-  const message = req.body.message;
+  const { phone, message } = req.body;
+
   try {
-    const response = await client.sendMessage(number, message);
-    res.status(200).json(response);
-  } catch (err) {
-    res.status(500).json(err);
+    const formattedNumber = phoneNumberFormatter(phone);
+    const response = await client.sendMessage(formattedNumber, message);
+    res.status(200).json(response); // Return success response
+  } catch (error) {
+    console.error("Error sending message:", error);
+    res.status(500).json({ error: "Failed to send message" }); // Return error response
   }
 });
 
-// Menjalankan server
-server.listen(port, () => console.log(`Server running on port ${port}`));
+// Start the server
+server.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
