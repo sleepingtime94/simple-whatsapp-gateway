@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css"
+        integrity="sha512-jnSuA4Ss2PkkikSOLtYs8BlYIeeIK1h99ty4YfvRPAlzr377vr3CXDb7sb7eEEBYjDtcYj+AjBH3FLv5uSJuXg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+
+<body>
+    <div class="container">
+        <div class="p-5 text-center">
+            <div class="fs-1">WhatsApp</div>
+            <div class="my-3">
+                <div id="status">Connection Status: <span id="status-text" class="fw-bold">Loading...</span></div>
+            </div>
+            <div class="mb-5">
+                <div id="no-qr" style="display: none;">No QR Code available. Please wait...</div>
+                <img id="qr-image" class="img-responsive w-50" />
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        // Fungsi untuk memperbarui status di UI
+        function updateStatus(status) {
+            const statusText = document.getElementById('status-text');
+
+            switch (status) {
+                case "waiting-for-scan":
+                    statusText.textContent = "Waiting for QR Code scan...";
+                    break;
+                case "authenticated":
+                    statusText.textContent = "Authenticated!";
+                    break;
+                case "ready":
+                    statusText.textContent = "WhatsApp is ready!";
+                    break;
+                case "failed":
+                    statusText.textContent = "Authentication failed!";
+                    break;
+                case "disconnected":
+                    statusText.textContent = "Disconnected!";
+                    break;
+                default:
+                    statusText.textContent = "Unknown status";
+            }
+        }
+
+        // Ambil status awal saat halaman dimuat
+        fetch("/current-status")
+            .then((response) => response.json())
+            .then((data) => {
+                updateStatus(data.status);
+            })
+            .catch((error) => {
+                console.error("Error fetching current status:", error);
+            });
+
+        // Tangkap pembaruan status koneksi dari Socket.IO
+        socket.on("connection-status", (data) => {
+            updateStatus(data.status);
+        });
+
+        // Tangkap pembaruan QR Code
+        socket.on("qr-code", (data) => {
+            const qrImage = document.getElementById('qr-image');
+            const noQRMessage = document.getElementById('no-qr');
+
+            if (data.kodeQR) {
+                qrImage.src = data.kodeQR;
+                qrImage.style.display = 'block';
+                noQRMessage.style.display = 'none';
+            } else {
+                qrImage.style.display = 'none';
+                noQRMessage.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+
+</html>
