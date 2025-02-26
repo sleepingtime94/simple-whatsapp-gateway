@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatsApp</title>
+    <title>WhatsApp Gateway</title>
+    <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css"
         integrity="sha512-jnSuA4Ss2PkkikSOLtYs8BlYIeeIK1h99ty4YfvRPAlzr377vr3CXDb7sb7eEEBYjDtcYj+AjBH3FLv5uSJuXg=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -13,25 +14,30 @@
 <body>
     <div class="container">
         <div class="p-5 text-center">
-            <div class="fs-1">WhatsApp</div>
+            <h1 class="fs-1">WhatsApp Gateway</h1>
             <div class="my-3">
                 <div id="status">Connection Status: <span id="status-text" class="fw-bold">Loading...</span></div>
             </div>
-            <div class="mb-5">
-                <div id="no-qr" style="display: none;">No QR Code available. Please wait...</div>
-                <img id="qr-image" class="img-responsive w-50" />
+            <div class="mb-5 d-flex justify-content-center">
+                <div>
+                    <div id="no-qr" style="display: none;">No QR Code available. Please wait...</div>
+                    <img id="qr-image" class="img-fluid w-100" alt="QR Code" />
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Socket.IO Client -->
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
 
-        // Fungsi untuk memperbarui status di UI
+        /**
+         * Update connection status in the UI.
+         * @param {string} status - The current connection status.
+         */
         function updateStatus(status) {
             const statusText = document.getElementById('status-text');
-
             switch (status) {
                 case "waiting-for-scan":
                     statusText.textContent = "Waiting for QR Code scan...";
@@ -53,7 +59,9 @@
             }
         }
 
-        // Ambil status awal saat halaman dimuat
+        /**
+         * Fetch the initial connection status when the page loads.
+         */
         fetch("/current-status")
             .then((response) => response.json())
             .then((data) => {
@@ -63,18 +71,22 @@
                 console.error("Error fetching current status:", error);
             });
 
-        // Tangkap pembaruan status koneksi dari Socket.IO
+        /**
+         * Listen for real-time status updates from the server.
+         */
         socket.on("connection-status", (data) => {
             updateStatus(data.status);
         });
 
-        // Tangkap pembaruan QR Code
+        /**
+         * Listen for QR Code updates from the server.
+         */
         socket.on("qr-code", (data) => {
             const qrImage = document.getElementById('qr-image');
             const noQRMessage = document.getElementById('no-qr');
 
-            if (data.kodeQR) {
-                qrImage.src = data.kodeQR;
+            if (data.qrCode) {
+                qrImage.src = data.qrCode; // Set the QR Code image source
                 qrImage.style.display = 'block';
                 noQRMessage.style.display = 'none';
             } else {

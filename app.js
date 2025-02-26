@@ -48,6 +48,7 @@ const phoneNumberFormatter = (number) => {
 // Initialize WhatsApp client
 const client = new Client({
   authStrategy: new LocalAuth(),
+  executablePath: "/usr/bin/chromium-browser",
   puppeteer: {
     headless: true,
     args: [
