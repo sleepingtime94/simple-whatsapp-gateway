@@ -115,7 +115,7 @@ const logMessageToFile = (logData) => {
 const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
-    // executablePath: "/usr/bin/chromium-browser",
+    executablePath: "/usr/bin/chromium-browser",
     headless: true,
     args: [
       "--no-sandbox",
