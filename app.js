@@ -6,6 +6,7 @@ const { Client, LocalAuth } = require("whatsapp-web.js");
 const http = require("http");
 const { Server } = require("socket.io");
 const dotenv = require("dotenv");
+const fs = require("fs");
 
 // Load environment variables
 dotenv.config();
@@ -45,11 +46,76 @@ const phoneNumberFormatter = (number) => {
   return formatted.endsWith("@c.us") ? formatted : formatted + "@c.us";
 };
 
+/**
+ * Log message to logs.json file
+ * @param {object} logData - Data to be logged
+ */
+/**
+ * Log message to logs.json file
+ * @param {object} logData - Data to be logged
+ */
+const logMessageToFile = (logData) => {
+  const logFilePath = "./logs.json";
+
+  try {
+    // Initialize logs as an empty array
+    let logs = [];
+
+    // Check if file exists
+    if (fs.existsSync(logFilePath)) {
+      try {
+        // Read existing logs
+        const fileContent = fs.readFileSync(logFilePath, "utf8");
+        const parsedData = JSON.parse(fileContent);
+
+        // Ensure that parsed data is an array
+        if (Array.isArray(parsedData)) {
+          logs = parsedData;
+        } else {
+          console.warn(
+            "Logs file does not contain an array. Creating a new logs array."
+          );
+        }
+      } catch (parseError) {
+        console.error("Error parsing logs file:", parseError);
+        console.log("Creating a new logs array.");
+      }
+    } else {
+      console.log("Logs file does not exist. Creating a new one.");
+    }
+
+    // Get current date and time
+    const now = new Date();
+
+    // Add new log with detailed timestamp information
+    logs.push({
+      ...logData,
+      timestamp: now.toISOString(),
+      // sentDate: {
+      //   date: now.toLocaleDateString(),
+      //   time: now.toLocaleTimeString(),
+      //   year: now.getFullYear(),
+      //   month: now.getMonth() + 1,
+      //   day: now.getDate(),
+      //   hours: now.getHours(),
+      //   minutes: now.getMinutes(),
+      //   seconds: now.getSeconds(),
+      // },
+    });
+
+    // Write updated logs back to file
+    fs.writeFileSync(logFilePath, JSON.stringify(logs, null, 2), "utf8");
+    console.log("Message logged successfully");
+  } catch (error) {
+    console.error("Error logging message:", error);
+  }
+};
+
 // Initialize WhatsApp client
 const client = new Client({
   authStrategy: new LocalAuth(),
   puppeteer: {
-    executablePath: "/usr/bin/chromium-browser",
+    // executablePath: "/usr/bin/chromium-browser",
     headless: true,
     args: [
       "--no-sandbox",
@@ -123,11 +189,75 @@ app.post("/send-message", async (req, res) => {
 
   try {
     const formattedNumber = phoneNumberFormatter(phone);
+
+    // Check if the number exists on WhatsApp before sending
+    const isRegistered = await client.isRegisteredUser(formattedNumber);
+
+    if (!isRegistered) {
+      console.log(
+        `Phone number ${formattedNumber} is not registered on WhatsApp`
+      );
+
+      // Log the unregistered number attempt
+      logMessageToFile({
+        phone: formattedNumber,
+        status: "failed",
+        reason: "number_not_registered",
+        timestamp: new Date().toISOString(),
+      });
+
+      return res.status(404).json({
+        status: false,
+        message: "The phone number is not registered on WhatsApp",
+      });
+    }
+
+    // If registered, proceed with sending the message
     const response = await client.sendMessage(formattedNumber, message);
-    res.status(200).json(response); // Return success response
+
+    // Log successful message
+    logMessageToFile({
+      phone: formattedNumber,
+      status: "sent",
+      messageId: response.id._serialized,
+    });
+
+    res.status(200).json({
+      status: true,
+      message: "Message sent successfully",
+      response: response,
+    });
   } catch (error) {
     console.error("Error sending message:", error);
-    res.status(500).json({ error: "Failed to send message" }); // Return error response
+
+    // Log error to file
+    logMessageToFile({
+      phone: phoneNumberFormatter(phone),
+      status: "failed",
+      error: error.message,
+    });
+
+    res.status(500).json({
+      status: false,
+      message: "Failed to send message",
+      error: error.message,
+    });
+  }
+});
+
+app.get("/logs", (req, res) => {
+  const logFilePath = "./logs.json";
+
+  try {
+    if (fs.existsSync(logFilePath)) {
+      const logs = JSON.parse(fs.readFileSync(logFilePath, "utf8"));
+      res.status(200).json(logs);
+    } else {
+      res.status(200).json([]);
+    }
+  } catch (error) {
+    console.error("Error reading logs:", error);
+    res.status(500).json({ error: "Failed to read logs" });
   }
 });
 
