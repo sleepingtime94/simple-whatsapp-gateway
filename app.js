@@ -90,17 +90,8 @@ const logMessageToFile = (logData) => {
     // Add new log with detailed timestamp information
     logs.push({
       ...logData,
-      timestamp: now.toISOString(),
-      // sentDate: {
-      //   date: now.toLocaleDateString(),
-      //   time: now.toLocaleTimeString(),
-      //   year: now.getFullYear(),
-      //   month: now.getMonth() + 1,
-      //   day: now.getDate(),
-      //   hours: now.getHours(),
-      //   minutes: now.getMinutes(),
-      //   seconds: now.getSeconds(),
-      // },
+      date: now.toLocaleDateString(),
+      time: now.toLocaleTimeString(),
     });
 
     // Write updated logs back to file
