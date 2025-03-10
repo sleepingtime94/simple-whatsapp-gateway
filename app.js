@@ -49,8 +49,7 @@ const logMessageToFile = (logData) => {
     const now = new Date();
     logs.push({
       ...logData,
-      date: now.toLocaleDateString(),
-      time: now.toLocaleTimeString(),
+      date: now.toLocaleDateString() + "/" + now.toLocaleTimeString(),
     });
     fs.writeFileSync(logFilePath, JSON.stringify(logs, null, 2), "utf8");
   } catch (error) {
@@ -86,29 +85,34 @@ client.on("qr", async (qr) => {
     const qrCodeUrl = await QRCode.toDataURL(qr);
     io.emit("qr-code", { qrCode: qrCodeUrl });
     io.emit("connection-status", { status: "waiting-for-scan" });
+    console.log(":: Generate QR Code");
   } catch (error) {
-    console.error("Error generating QR Code:", error);
+    console.error(":: Error generating QR Code:", error);
   }
 });
 
 client.on("authenticated", () => {
   connectionStatus = "authenticated";
   io.emit("connection-status", { status: "authenticated" });
+  console.log(":: Authenticated");
 });
 
 client.on("ready", () => {
   connectionStatus = "ready";
   io.emit("connection-status", { status: "ready" });
+  console.log(":: Whatsapp Ready");
 });
 
 client.on("auth_failure", () => {
   connectionStatus = "failed";
   io.emit("connection-status", { status: "failed" });
+  console.log(":: Authentication Failed");
 });
 
 client.on("disconnected", () => {
   connectionStatus = "disconnected";
   io.emit("connection-status", { status: "disconnected" });
+  console.log(":: Disconnected");
 });
 
 client.initialize();
@@ -145,8 +149,9 @@ app.post("/send-message", async (req, res) => {
     res.status(200).json({
       status: true,
       message: "Message sent successfully",
-      response: response,
+      response: response.id._serialized,
     });
+    console.log(":: Message sent success;", response.id._serialized);
   } catch (error) {
     logMessageToFile({
       phone: phoneNumberFormatter(phone),
@@ -176,5 +181,5 @@ app.get("/logs", (req, res) => {
 });
 
 server.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  console.log(`:: Running on port ${port}`);
 });
