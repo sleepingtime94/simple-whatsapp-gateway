@@ -49,21 +49,21 @@ client.on("ready", () => {
 });
 
 app.post("/send-message", authenticateUser, async (req, res) => {
-  const { number, message } = req.body;
+  const { number, msg } = req.body;
 
-  if (!number || !message) {
+  if (!number || !msg) {
     return res.status(400).send({ error: "Number and message are required" });
   }
 
   const formattedNumber = phoneNumberFormatter(number);
 
   try {
-    const response = await client.sendMessage(formattedNumber, message);
-    logMessage(formattedNumber, message, "success");
+    const response = await client.sendMessage(formattedNumber, msg);
+    logMessage(formattedNumber, msg, "success");
     res.send(response);
   } catch (error) {
     console.error(error);
-    logMessage(formattedNumber, message, "failed");
+    logMessage(formattedNumber, msg, "failed");
     res.status(500).send({ error: "Failed to send message" });
   }
 });
