@@ -49,13 +49,13 @@ client.on("ready", () => {
 });
 
 app.post("/send-message", authenticateUser, async (req, res) => {
-  const { number, msg } = req.body;
+  const { phone, msg } = req.body;
 
-  if (!number || !msg) {
+  if (!phone || !msg) {
     return res.status(400).send({ error: "Number and message are required" });
   }
 
-  const formattedNumber = phoneNumberFormatter(number);
+  const formattedNumber = phoneNumberFormatter(phone);
 
   try {
     const response = await client.sendMessage(formattedNumber, msg);
