@@ -6,6 +6,7 @@ const app = express();
 const { authenticateUser, phoneNumberFormatter } = require("./helpers");
 const { logMessage } = require("./database");
 const qrcode = require("qrcode-terminal");
+const port = process.env.PORT || 9000;
 
 app.use(cors());
 app.use(express.json());
@@ -49,23 +50,26 @@ client.on("ready", () => {
 });
 
 app.post("/send-message", authenticateUser, async (req, res) => {
-  const { phone, msg } = req.body;
+  const { phone, message } = req.body;
 
-  if (!phone || !msg) {
+  if (!phone || !message) {
     return res.status(400).send({ error: "Number and message are required" });
   }
 
   const formattedNumber = phoneNumberFormatter(phone);
 
   try {
-    const response = await client.sendMessage(formattedNumber, msg);
-    logMessage(formattedNumber, msg, "success");
+    const response = await client.sendMessage(formattedNumber, message);
+    logMessage(formattedNumber, message, "success");
     res.send(response);
   } catch (error) {
     console.error(error);
-    logMessage(formattedNumber, msg, "failed");
+    logMessage(formattedNumber, message, "failed");
     res.status(500).send({ error: "Failed to send message" });
   }
 });
 
-app.listen(3000);
+app.listen(
+  port,
+  console.log(() => `Server running on port ${port}`)
+);
