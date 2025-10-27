@@ -1,7 +1,8 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const { Client, LocalAuth } = require("whatsapp-web.js");
+const axios = require("axios");
+const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
 const app = express();
 const { authenticateUser, phoneNumberFormatter } = require("./helpers");
 const { logMessage } = require("./database");
@@ -26,6 +27,12 @@ const client = new Client({
       "--single-process",
       "--disable-gpu",
     ],
+  },
+  webVersion: "2.2410.10",
+  webVersionCache: {
+    type: "remote",
+    remotePath:
+      "https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2410.10.html",
   },
 });
 
@@ -66,6 +73,49 @@ app.post("/send-message", authenticateUser, async (req, res) => {
     console.error(error);
     logMessage(formattedNumber, message, "failed");
     res.status(500).send({ error: "Failed to send message" });
+  }
+});
+
+app.post("/send-media", authenticateUser, async (req, res) => {
+  const { phone, mediaPath, caption } = req.body;
+
+  if (!phone || !mediaPath) {
+    return res.status(400).send({ error: "Number and mediaPath are required" });
+  }
+
+  const formattedNumber = phoneNumberFormatter(phone);
+
+  try {
+    let media;
+
+    // Jika URL dimulai dengan http atau https → download dulu
+    if (mediaPath.startsWith("http")) {
+      const response = await axios.get(mediaPath, {
+        responseType: "arraybuffer",
+      });
+      const mimeType = response.headers["content-type"];
+      const base64 = Buffer.from(response.data, "binary").toString("base64");
+      media = new MessageMedia(
+        mimeType,
+        base64,
+        "file." + mimeType.split("/")[1]
+      );
+    } else {
+      // Kalau path lokal
+      media = MessageMedia.fromFilePath(mediaPath);
+    }
+
+    const sendResponse = await client.sendMessage(formattedNumber, media, {
+      caption,
+    });
+    logMessage(formattedNumber, mediaPath, "success");
+    res.send(sendResponse);
+  } catch (error) {
+    console.error("Send media error:", error);
+    logMessage(formattedNumber, mediaPath, "failed");
+    res
+      .status(500)
+      .send({ error: "Failed to send media", detail: error.message });
   }
 });
 
