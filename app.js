@@ -56,6 +56,7 @@ client.on("ready", () => {
   console.log("Whatsapp Ready!");
 });
 
+// * Kirim pesan teks biasa
 app.post("/send-message", authenticateUser, async (req, res) => {
   const { phone, message } = req.body;
 
@@ -76,6 +77,7 @@ app.post("/send-message", authenticateUser, async (req, res) => {
   }
 });
 
+//* Kirim file menggunakan url
 app.post("/send-media", authenticateUser, async (req, res) => {
   const { phone, mediaPath, caption } = req.body;
 
@@ -116,6 +118,38 @@ app.post("/send-media", authenticateUser, async (req, res) => {
     res
       .status(500)
       .send({ error: "Failed to send media", detail: error.message });
+  }
+});
+
+// ** Kirim file media menggunakan base64
+// * {
+// *   "phone": "08123456789",
+// *   "caption": "Tes kirim file dengan base64",
+// *   "key": "key123",
+// *   "filename": "formulir.pdf",
+// *   "mimetype": "application/pdf",
+// *   "fileData": "JVBERi0xLjQKJeLjz9MKMyAwIG9iago8PC9UeXBlIC9QYWdlL..."
+// * }
+app.post("/send-media-base64", authenticateUser, async (req, res) => {
+  const { phone, caption, fileData, filename, mimetype } = req.body;
+
+  if (!phone || !fileData) {
+    return res.status(400).send({ error: "Number and fileData required" });
+  }
+
+  const formattedNumber = phoneNumberFormatter(phone);
+
+  try {
+    const media = new MessageMedia(mimetype, fileData, filename);
+    const response = await client.sendMessage(formattedNumber, media, {
+      caption,
+    });
+    logMessage(formattedNumber, filename, "success");
+    res.send(response);
+  } catch (error) {
+    console.error("Send media error:", error);
+    logMessage(formattedNumber, filename, "failed");
+    res.status(500).send({ error: "Failed to send media" });
   }
 });
 
