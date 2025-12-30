@@ -3,14 +3,14 @@
   "version": "1.0.0",
   "main": "app.js",
   "scripts": {
-    "start": "node app.js"
+    "start": "node app.js",
+    "dev": "nodemon app.js"
   },
   "keywords": [],
   "author": "sleepingtime94",
-  "license": "ISC",
-  "description": "simple whatsapp gateway",
+  "license": "MIT",
+  "description": "simple whatsapp gateway using whatsapp-web.js and express.js",
   "dependencies": {
-    "axios": "^1.12.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
