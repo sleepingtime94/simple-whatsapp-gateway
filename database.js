@@ -10,11 +10,11 @@ const pool = mysql.createPool({
   queueLimit: 0,
 });
 
-async function logMessage(phone, message, status) {
+async function logMessage(phone, message, status, session) {
   try {
     const query =
-      "INSERT INTO message_logs (phone, message, status) VALUES (?, ?, ?)";
-    await pool.execute(query, [phone, message, status]);
+      "INSERT INTO message_logs (phone, message, status, session) VALUES (?, ?, ?, ?)";
+    await pool.execute(query, [phone, message, status, session]);
     console.log(`:: Log saved: ${phone}`);
   } catch (err) {
     console.error(":: Failed to save log:", err.message);
